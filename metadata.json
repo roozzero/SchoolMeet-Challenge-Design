@@ -1,0 +1,6 @@
+{
+  "name": "میدان — داشبورد مدیریت مسابقات",
+  "description": "داشبورد جامع مدیریت مسابقات با آمار لحظه‌ای، مدیریت مراحل، شرکت‌کنندگان، نتایج، فیلترهای پیشرفته و گزارش فعالیت‌های اخیر.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

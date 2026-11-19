@@ -1,0 +1,738 @@
+import { ActivityItem, Contest, ContestStatus } from '../types/contest';
+
+const PERSIAN_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+
+export function toPersianDigits(input: string | number): string {
+  return String(input).replace(/\d/g, (d) => PERSIAN_DIGITS[Number(d)]);
+}
+
+export function formatPersianNumber(num: number): string {
+  return toPersianDigits(num.toLocaleString('en-US'));
+}
+
+export function formatJalaliDate(isoDate: string): string {
+  if (!isoDate) return '—';
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return isoDate;
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
+  try {
+    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  } catch {
+    return toPersianDigits(isoDate.replace(/-/g, '/'));
+  }
+}
+
+export function formatJalaliLongDate(isoDate: string): string {
+  if (!isoDate) return '—';
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return isoDate;
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 12, 0, 0));
+  try {
+    return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date);
+  } catch {
+    return formatJalaliDate(isoDate);
+  }
+}
+
+export function getContestMetrics(contest: Contest) {
+  const stageCount = contest.stages.length;
+  const participantsCount = contest.baseParticipantsOffset + contest.participants.length;
+  const completersCount =
+    contest.baseCompletersOffset + contest.participants.filter((p) => p.isCompleted).length;
+  const winnersCount =
+    contest.baseWinnersOffset + contest.participants.filter((p) => p.isWinner).length;
+  const completionRate =
+    participantsCount > 0 ? Math.min(100, Math.round((completersCount / participantsCount) * 100)) : 0;
+
+  return {
+    stageCount,
+    participantsCount,
+    completersCount,
+    winnersCount,
+    completionRate,
+  };
+}
+
+export const STATUS_META: Record<
+  ContestStatus,
+  {
+    label: string;
+    textClass: string;
+    dotColor: string;
+    description: string;
+  }
+> = {
+  active: {
+    label: 'فعال',
+    textClass: 'text-[#0F766E]',
+    dotColor: 'bg-[#0F766E]',
+    description: 'در حال پذیرش شرکت‌کننده و ثبت امتیاز',
+  },
+  draft: {
+    label: 'پیش‌نویس',
+    textClass: 'text-[#7A6A5B]',
+    dotColor: 'bg-[#9C8D7E]',
+    description: 'آماده‌سازی مراحل پیش از انتشار عمومی',
+  },
+  paused: {
+    label: 'متوقف‌شده',
+    textClass: 'text-[#B45309]',
+    dotColor: 'bg-[#B45309]',
+    description: 'ثبت پاسخ موقتاً متوقف شده است',
+  },
+  ended: {
+    label: 'پایان‌یافته',
+    textClass: 'text-[#8C7C6D]',
+    dotColor: 'bg-[#A89A8A]',
+    description: 'مهلت مسابقه به پایان رسیده و نتایج نهایی شده است',
+  },
+};
+
+export const INITIAL_CONTESTS: Contest[] = [
+  {
+    id: 'cnt-101',
+    code: 'MDN-4051',
+    title: 'چالش برنامه‌نویسی پاییزه',
+    description:
+      'رقابت چندمرحله‌ای حل مسائل الگوریتمی، بهینه‌سازی کد و پیاده‌سازی سرویس واقعی با داوری خودکار و رتبه‌بندی لحظه‌ای.',
+    category: 'فناوری و توسعه',
+    prizeSummary: '۱۵۰ میلیون تومان جایزه نقدی برای ۵ نفر برتر',
+    startDate: '2026-11-01',
+    endDate: '2026-12-10',
+    status: 'active',
+    baseParticipantsOffset: 1240,
+    baseCompletersOffset: 738,
+    baseWinnersOffset: 0,
+    stages: [
+      {
+        id: 'st-101-1',
+        title: 'آزمون ورودی ساختار داده',
+        description: 'پاسخ به ۱۰ سؤال زمان‌دار از درخت‌ها، گراف‌ها و پیچیدگی زمانی',
+        points: 100,
+        required: true,
+        completedCount: 1120,
+      },
+      {
+        id: 'st-101-2',
+        title: 'بهینه‌سازی پرس‌وجوهای پایگاه داده',
+        description: 'کاهش زمان اجرای ۵ کوئری سنگین در مجموعه داده یک میلیون رکوردی',
+        points: 150,
+        required: true,
+        completedCount: 965,
+      },
+      {
+        id: 'st-101-3',
+        title: 'طراحی معماری API مقیاس‌پذیر',
+        description: 'پیاده‌سازی سرویس محدودکننده نرخ درخواست با تست‌های خودکار',
+        points: 200,
+        required: true,
+        completedCount: 814,
+      },
+      {
+        id: 'st-101-4',
+        title: 'پروژه نهایی و دفاع فنی',
+        description: 'تحویل مخزن نهایی و ارائه مستندات تصمیم‌های معماری',
+        points: 250,
+        required: true,
+        completedCount: 742,
+      },
+    ],
+    participants: [
+      {
+        id: 'p-1',
+        fullName: 'آرش کامرانی',
+        email: 'arash.kamrani@example.ir',
+        phone: '09123481120',
+        joinedAt: '2026-11-02',
+        completedStages: 4,
+        totalStages: 4,
+        score: 685,
+        completionTimeMinutes: 142,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-2',
+        fullName: 'نیلوفر شریفی',
+        email: 'n.sharifi@example.ir',
+        phone: '09124872310',
+        joinedAt: '2026-11-02',
+        completedStages: 4,
+        totalStages: 4,
+        score: 670,
+        completionTimeMinutes: 156,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-3',
+        fullName: 'سهراب مرادی',
+        email: 'sohrab.moradi@example.ir',
+        phone: '09352194401',
+        joinedAt: '2026-11-04',
+        completedStages: 4,
+        totalStages: 4,
+        score: 645,
+        completionTimeMinutes: 171,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-4',
+        fullName: 'مهسا فرهادی',
+        email: 'mahsa.farhadi@example.ir',
+        phone: '09198223014',
+        joinedAt: '2026-11-06',
+        completedStages: 4,
+        totalStages: 4,
+        score: 618,
+        completionTimeMinutes: 184,
+        isCompleted: true,
+        isWinner: false,
+      },
+      {
+        id: 'p-5',
+        fullName: 'کیانوش رضایی',
+        email: 'k.rezaei@example.ir',
+        phone: '09126045198',
+        joinedAt: '2026-11-09',
+        completedStages: 3,
+        totalStages: 4,
+        score: 430,
+        completionTimeMinutes: 120,
+        isCompleted: false,
+        isWinner: false,
+      },
+      {
+        id: 'p-6',
+        fullName: 'سارا احمدی‌پور',
+        email: 'sara.ahmadi@example.ir',
+        phone: '09107339921',
+        joinedAt: '2026-11-12',
+        completedStages: 2,
+        totalStages: 4,
+        score: 245,
+        completionTimeMinutes: 74,
+        isCompleted: false,
+        isWinner: false,
+      },
+    ],
+  },
+  {
+    id: 'cnt-102',
+    code: 'MDN-4052',
+    title: 'مسابقه طراحی تجربه کاربری ۱۴۰۵',
+    description:
+      'بازطراحی جریان خرید و داشبورد کاربری یک محصول مالی با تمرکز بر دسترس‌پذیری، سرعت انجام وظیفه و معماری اطلاعات.',
+    category: 'طراحی محصول',
+    prizeSummary: '۸۰ میلیون تومان + بورسیه کارگاه تخصصی طراحی سیستم',
+    startDate: '2026-11-08',
+    endDate: '2026-11-30',
+    status: 'active',
+    baseParticipantsOffset: 615,
+    baseCompletersOffset: 382,
+    baseWinnersOffset: 0,
+    stages: [
+      {
+        id: 'st-102-1',
+        title: 'تحلیل رفتار کاربر و نقشه سفر',
+        description: 'شناسایی گلوگاه‌های تجربه کاربری و ارائه گزارش پژوهش میدانی',
+        points: 100,
+        required: true,
+        completedCount: 540,
+      },
+      {
+        id: 'st-102-2',
+        title: 'وایرفریم و معماری اطلاعات',
+        description: 'طراحی ساختار صفحات کلیدی و سناریوهای تعامل اصلی',
+        points: 150,
+        required: true,
+        completedCount: 448,
+      },
+      {
+        id: 'st-102-3',
+        title: 'نمونه تعاملی و آزمون کاربردپذیری',
+        description: 'ارائه فایل پروتوتایپ قابل کلیک به همراه خلاصه نتایج تست با ۵ کاربر',
+        points: 200,
+        required: true,
+        completedCount: 385,
+      },
+    ],
+    participants: [
+      {
+        id: 'p-7',
+        fullName: 'پریسا نوری',
+        email: 'parisa.nouri@example.ir',
+        phone: '09127810045',
+        joinedAt: '2026-11-09',
+        completedStages: 3,
+        totalStages: 3,
+        score: 442,
+        completionTimeMinutes: 210,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-8',
+        fullName: 'حامد توسلی',
+        email: 'hamed.tavasoli@example.ir',
+        phone: '09121998432',
+        joinedAt: '2026-11-10',
+        completedStages: 3,
+        totalStages: 3,
+        score: 428,
+        completionTimeMinutes: 224,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-9',
+        fullName: 'الهام جعفری',
+        email: 'elham.jafari@example.ir',
+        phone: '09364512098',
+        joinedAt: '2026-11-11',
+        completedStages: 3,
+        totalStages: 3,
+        score: 405,
+        completionTimeMinutes: 245,
+        isCompleted: true,
+        isWinner: false,
+      },
+      {
+        id: 'p-10',
+        fullName: 'امیرحسین قاسمی',
+        email: 'a.ghasemi@example.ir',
+        phone: '09129044112',
+        joinedAt: '2026-11-14',
+        completedStages: 2,
+        totalStages: 3,
+        score: 235,
+        completionTimeMinutes: 130,
+        isCompleted: false,
+        isWinner: false,
+      },
+    ],
+  },
+  {
+    id: 'cnt-103',
+    code: 'MDN-4053',
+    title: 'کمپین معرفی دوستان و امتیازگیری آبان',
+    description:
+      'مسابقه رشد تعاملی برای کاربران فعال جهت دعوت از دوستان، تکمیل پروفایل و انجام مأموریت‌های هفتگی در اپلیکیشن.',
+    category: 'بازاریابی و رشد',
+    prizeSummary: '۱۰ دستگاه تبلت و ۵۰ بسته اشتراک سالانه',
+    startDate: '2026-10-24',
+    endDate: '2026-11-25',
+    status: 'active',
+    baseParticipantsOffset: 2890,
+    baseCompletersOffset: 1842,
+    baseWinnersOffset: 12,
+    stages: [
+      {
+        id: 'st-103-1',
+        title: 'تکمیل پروفایل کاربری',
+        description: 'احراز هویت و تکمیل اطلاعات حساب کاربری',
+        points: 50,
+        required: true,
+        completedCount: 2710,
+      },
+      {
+        id: 'st-103-2',
+        title: 'دعوت حداقل ۳ دوست جدید',
+        description: 'ثبت‌نام موفق ۳ کاربر جدید با کد معرف اختصاصی',
+        points: 120,
+        required: true,
+        completedCount: 2140,
+      },
+      {
+        id: 'st-103-3',
+        title: 'شرکت در آزمون شناخت محصول',
+        description: 'پاسخ صحیح به حداقل ۴ سؤال از ۵ سؤال معرفی امکانات',
+        points: 80,
+        required: true,
+        completedCount: 1920,
+      },
+      {
+        id: 'st-103-4',
+        title: 'ثبت بازخورد و تجربه استفاده',
+        description: 'تکمیل فرم ارزیابی تجربه کاربری نسخه جدید',
+        points: 70,
+        required: false,
+        completedCount: 1845,
+      },
+      {
+        id: 'st-103-5',
+        title: 'قرعه‌کشی مرحله نهایی',
+        description: 'تأیید نهایی امتیازات و ورود به لیست قرعه‌کشی برندگان',
+        points: 100,
+        required: true,
+        completedCount: 1845,
+      },
+    ],
+    participants: [
+      {
+        id: 'p-11',
+        fullName: 'مریم کاظمی',
+        email: 'maryam.kazemi@example.ir',
+        phone: '09125548901',
+        joinedAt: '2026-10-25',
+        completedStages: 5,
+        totalStages: 5,
+        score: 420,
+        completionTimeMinutes: 48,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-12',
+        fullName: 'داوود اکبری',
+        email: 'd.akbari@example.ir',
+        phone: '09132247780',
+        joinedAt: '2026-10-26',
+        completedStages: 5,
+        totalStages: 5,
+        score: 410,
+        completionTimeMinutes: 55,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-13',
+        fullName: 'فاطمه حسینی',
+        email: 'f.hosseini@example.ir',
+        phone: '09128761209',
+        joinedAt: '2026-10-28',
+        completedStages: 5,
+        totalStages: 5,
+        score: 395,
+        completionTimeMinutes: 63,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-14',
+        fullName: 'رضا محمدی',
+        email: 'reza.mohammadi@example.ir',
+        phone: '09356619044',
+        joinedAt: '2026-11-05',
+        completedStages: 3,
+        totalStages: 5,
+        score: 210,
+        completionTimeMinutes: 41,
+        isCompleted: false,
+        isWinner: false,
+      },
+    ],
+  },
+  {
+    id: 'cnt-104',
+    code: 'MDN-4054',
+    title: 'مسابقه تحلیل داده و پیش‌بینی فروش',
+    description:
+      'ساخت مدل پیش‌بینی تقاضای هفتگی فروشگاه‌های زنجیره‌ای بر اساس داده‌های تاریخی دو سال گذشته و ارزیابی با معیار MAPE.',
+    category: 'علم داده',
+    prizeSummary: '۱۲۰ میلیون تومان + فرصت همکاری پژوهشی',
+    startDate: '2026-10-15',
+    endDate: '2026-11-28',
+    status: 'paused',
+    baseParticipantsOffset: 418,
+    baseCompletersOffset: 164,
+    baseWinnersOffset: 0,
+    stages: [
+      {
+        id: 'st-104-1',
+        title: 'پاک‌سازی و تحلیل اکتشافی داده',
+        description: 'شناسایی داده‌های پرت، مقادیر گمشده و الگوهای فصلی',
+        points: 100,
+        required: true,
+        completedCount: 356,
+      },
+      {
+        id: 'st-104-2',
+        title: 'مهندسی ویژگی و مدل پایه',
+        description: 'ارسال اولین خروجی پیش‌بینی و ثبت خطای معیار روی داده آزمایشی',
+        points: 150,
+        required: true,
+        completedCount: 244,
+      },
+      {
+        id: 'st-104-3',
+        title: 'بهینه‌سازی نهایی مدل',
+        description: 'کاهش خطای پیش‌بینی و تحویل نوت‌بوک قابل بازتولید',
+        points: 200,
+        required: true,
+        completedCount: 166,
+      },
+    ],
+    participants: [
+      {
+        id: 'p-15',
+        fullName: 'سینا بهرامی',
+        email: 'sina.bahrami@example.ir',
+        phone: '09123007812',
+        joinedAt: '2026-10-16',
+        completedStages: 3,
+        totalStages: 3,
+        score: 438,
+        completionTimeMinutes: 310,
+        isCompleted: true,
+        isWinner: false,
+      },
+      {
+        id: 'p-16',
+        fullName: 'نگار صمدی',
+        email: 'negar.samadi@example.ir',
+        phone: '09124459011',
+        joinedAt: '2026-10-18',
+        completedStages: 3,
+        totalStages: 3,
+        score: 421,
+        completionTimeMinutes: 328,
+        isCompleted: true,
+        isWinner: false,
+      },
+      {
+        id: 'p-17',
+        fullName: 'مهدی صادقی',
+        email: 'm.sadeghi@example.ir',
+        phone: '09371124590',
+        joinedAt: '2026-10-22',
+        completedStages: 2,
+        totalStages: 3,
+        score: 240,
+        completionTimeMinutes: 195,
+        isCompleted: false,
+        isWinner: false,
+      },
+    ],
+  },
+  {
+    id: 'cnt-105',
+    code: 'MDN-4055',
+    title: 'جشنواره عکاسی معماری معاصر ایران',
+    description:
+      'مسابقه سه‌مرحله‌ای ارسال آثار عکاسی شهری و معماری، ارزیابی فنی هیئت داوران و انتخاب برگزیدگان نمایشگاه زمستانه.',
+    category: 'هنر و رسانه',
+    prizeSummary: '۶۰ میلیون تومان + چاپ در کتابچه نمایشگاه سالانه',
+    startDate: '2026-12-01',
+    endDate: '2026-12-28',
+    status: 'draft',
+    baseParticipantsOffset: 0,
+    baseCompletersOffset: 0,
+    baseWinnersOffset: 0,
+    stages: [
+      {
+        id: 'st-105-1',
+        title: 'بارگذاری مجموعه آثار اولیه',
+        description: 'ارسال ۳ تا ۵ فریم عکس با کیفیت اصلی و توضیح موقعیت اثر',
+        points: 100,
+        required: true,
+        completedCount: 0,
+      },
+      {
+        id: 'st-105-2',
+        title: 'داوری فنی و انتخاب راهیافتگان',
+        description: 'بررسی ترکیب‌بندی، نورپردازی و اصالت فایل خام توسط داوران',
+        points: 150,
+        required: true,
+        completedCount: 0,
+      },
+      {
+        id: 'st-105-3',
+        title: 'رأی‌گیری نهایی و معرفی برگزیدگان',
+        description: 'جمع‌بندی امتیاز هیئت داوران و اعلام رتبه‌های اول تا سوم',
+        points: 150,
+        required: true,
+        completedCount: 0,
+      },
+    ],
+    participants: [],
+  },
+  {
+    id: 'cnt-106',
+    code: 'MDN-4056',
+    title: 'آزمون جامع امنیت وب و کشف آسیب‌پذیری',
+    description:
+      'آزمایشگاه شبیه‌سازی‌شده کشف خطاهای امنیتی، بررسی گزارش‌های نفوذ و ارائه راهکارهای اصلاحی برای تیم‌های مهندسی.',
+    category: 'امنیت سایبری',
+    prizeSummary: '۲۰۰ میلیون تومان جایزه تیمی و گواهی تخصصی',
+    startDate: '2026-12-05',
+    endDate: '2027-01-05',
+    status: 'draft',
+    baseParticipantsOffset: 0,
+    baseCompletersOffset: 0,
+    baseWinnersOffset: 0,
+    stages: [
+      {
+        id: 'st-106-1',
+        title: 'تحلیل کد و کشف خطاهای احراز هویت',
+        description: 'یافتن نقاط ضعف نشست‌های کاربری در محیط آزمایشگاهی',
+        points: 150,
+        required: true,
+        completedCount: 0,
+      },
+      {
+        id: 'st-106-2',
+        title: 'گزارش‌نویسی و ارائه وصله امنیتی',
+        description: 'ثبت گزارش استاندارد آسیب‌پذیری همراه با پیشنهاد رفع خطا',
+        points: 200,
+        required: true,
+        completedCount: 0,
+      },
+    ],
+    participants: [],
+  },
+  {
+    id: 'cnt-107',
+    code: 'MDN-4049',
+    title: 'لیگ تابستانه تولید محتوای آموزشی',
+    description:
+      'رقابت تولید آموزش‌های کوتاه و کاربردی در حوزه مهارت‌های دیجیتال که با داوری مخاطبان و کارشناسان به پایان رسید.',
+    category: 'آموزش و محتوا',
+    prizeSummary: '۹۰ میلیون تومان برای ۱۰ تولیدکننده برتر',
+    startDate: '2026-09-10',
+    endDate: '2026-10-20',
+    status: 'ended',
+    baseParticipantsOffset: 840,
+    baseCompletersOffset: 618,
+    baseWinnersOffset: 7,
+    stages: [
+      {
+        id: 'st-107-1',
+        title: 'ارسال طرح درس و سناریو',
+        description: 'ثبت ساختار آموزشی و اهداف یادگیری ویدیو',
+        points: 80,
+        required: true,
+        completedCount: 780,
+      },
+      {
+        id: 'st-107-2',
+        title: 'انتشار ویدیوی آموزشی',
+        description: 'بارگذاری قسمت نهایی با زیرنویس و منابع تکمیلی',
+        points: 160,
+        required: true,
+        completedCount: 660,
+      },
+      {
+        id: 'st-107-3',
+        title: 'ارزیابی نهایی و انتخاب برندگان',
+        description: 'امتیازدهی نهایی بر اساس کیفیت تدریس و نرخ تکمیل مخاطبان',
+        points: 160,
+        required: true,
+        completedCount: 621,
+      },
+    ],
+    participants: [
+      {
+        id: 'p-18',
+        fullName: 'فرهاد یوسفی',
+        email: 'farhad.yousefi@example.ir',
+        phone: '09123348921',
+        joinedAt: '2026-09-11',
+        completedStages: 3,
+        totalStages: 3,
+        score: 396,
+        completionTimeMinutes: 112,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-19',
+        fullName: 'زهرا کریمی',
+        email: 'zahra.karimi@example.ir',
+        phone: '09127098123',
+        joinedAt: '2026-09-12',
+        completedStages: 3,
+        totalStages: 3,
+        score: 389,
+        completionTimeMinutes: 124,
+        isCompleted: true,
+        isWinner: true,
+      },
+      {
+        id: 'p-20',
+        fullName: 'علیرضا حیدری',
+        email: 'a.heydari@example.ir',
+        phone: '09194401235',
+        joinedAt: '2026-09-14',
+        completedStages: 3,
+        totalStages: 3,
+        score: 381,
+        completionTimeMinutes: 138,
+        isCompleted: true,
+        isWinner: true,
+      },
+    ],
+  },
+];
+
+export const INITIAL_ACTIVITIES: ActivityItem[] = [
+  {
+    id: 'act-1',
+    category: 'winner',
+    actor: 'سارا منتظری',
+    action: '۳ برنده اولیه را در جدول نتایج تأیید کرد',
+    contestId: 'cnt-101',
+    contestTitle: 'چالش برنامه‌نویسی پاییزه',
+    timestampLabel: '۱۲ دقیقه پیش',
+    createdAt: Date.now() - 12 * 60 * 1000,
+  },
+  {
+    id: 'act-2',
+    category: 'participant',
+    actor: 'سامانه ثبت‌نام',
+    action: '۴۸ شرکت‌کننده جدید مرحله سوم را تکمیل کردند',
+    contestId: 'cnt-103',
+    contestTitle: 'کمپین معرفی دوستان و امتیازگیری آبان',
+    timestampLabel: '۴۵ دقیقه پیش',
+    createdAt: Date.now() - 45 * 60 * 1000,
+  },
+  {
+    id: 'act-3',
+    category: 'contest',
+    actor: 'امیر نادری',
+    action: 'وضعیت مسابقه را موقتاً به «متوقف‌شده» تغییر داد',
+    contestId: 'cnt-104',
+    contestTitle: 'مسابقه تحلیل داده و پیش‌بینی فروش',
+    timestampLabel: '۲ ساعت پیش',
+    createdAt: Date.now() - 2 * 60 * 60 * 1000,
+  },
+  {
+    id: 'act-4',
+    category: 'stage',
+    actor: 'سارا منتظری',
+    action: 'مرحله «نمونه تعاملی و آزمون کاربردپذیری» را به‌روزرسانی کرد',
+    contestId: 'cnt-102',
+    contestTitle: 'مسابقه طراحی تجربه کاربری ۱۴۰۵',
+    timestampLabel: '۴ ساعت پیش',
+    createdAt: Date.now() - 4 * 60 * 60 * 1000,
+  },
+  {
+    id: 'act-5',
+    category: 'contest',
+    actor: 'مهدی رفیعی',
+    action: 'پیش‌نویس جدید مسابقه را با ۳ مرحله ایجاد کرد',
+    contestId: 'cnt-105',
+    contestTitle: 'جشنواره عکاسی معماری معاصر ایران',
+    timestampLabel: 'دیروز، ۱۶:۲۰',
+    createdAt: Date.now() - 22 * 60 * 60 * 1000,
+  },
+  {
+    id: 'act-6',
+    category: 'winner',
+    actor: 'امیر نادری',
+    action: 'گزارش نهایی ۱۰ برنده را منتشر و مسابقه را مختومه کرد',
+    contestId: 'cnt-107',
+    contestTitle: 'لیگ تابستانه تولید محتوای آموزشی',
+    timestampLabel: '۳ روز پیش',
+    createdAt: Date.now() - 72 * 60 * 60 * 1000,
+  },
+];
